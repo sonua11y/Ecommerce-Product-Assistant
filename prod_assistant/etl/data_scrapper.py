@@ -3,11 +3,13 @@ import time
 import re
 import os
 from bs4 import BeautifulSoup
-import undetected_chromedriver as uc
+import undetected_chromedriver as uc  # used locally; server uses system Chromium with Selenium
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import InvalidSessionIdException, WebDriverException
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.chrome.service import Service as ChromeService
 
 class FlipkartScraper:
     def __init__(self, output_dir="data"):
@@ -15,21 +17,32 @@ class FlipkartScraper:
         os.makedirs(self.output_dir, exist_ok=True)
 
     def _create_driver(self):
+        """Create a Chrome driver.
+        - If CHROME_PATH or GOOGLE_CHROME_BIN is set, use system Chromium via Selenium (server-safe)
+        - Else use undetected-chromedriver for local robustness
+        """
+        chrome_path = os.getenv("CHROME_PATH") or os.getenv("GOOGLE_CHROME_BIN")
+        if chrome_path:
+            options = ChromeOptions()
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-gpu")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-blink-features=AutomationControlled")
+            options.add_argument("--headless=new")
+            options.binary_location = str(chrome_path)
+
+            chromedriver_path = os.getenv("CHROMEDRIVER_PATH", "/usr/bin/chromedriver")
+            service = ChromeService(executable_path=chromedriver_path)
+            from selenium import webdriver
+            return webdriver.Chrome(service=service, options=options)
+
+        # Local fallback to undetected-chromedriver
         options = uc.ChromeOptions()
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-gpu")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_argument("--start-maximized")
-        # Headless for server environments
-        options.add_argument("--headless=new")
-
-        # If running on platforms like Render, provide Chrome path via env
-        chrome_path = os.getenv("CHROME_PATH") or os.getenv("GOOGLE_CHROME_BIN")
-        if chrome_path:
-            # undetected-chromedriver expects string path
-            options.binary_location = str(chrome_path)
-
         return uc.Chrome(options=options, use_subprocess=True)
 
     def get_top_reviews(self,product_url,count=2):
