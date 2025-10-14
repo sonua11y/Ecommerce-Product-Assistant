@@ -64,3 +64,16 @@ if "scraped_data" in st.session_state and st.button("🧠 Store in Vector DB (As
         except Exception as e:
             st.error("❌ Ingestion failed!")
             st.exception(e)
+
+# --- Link to Chatbot (FastAPI UI) ---
+st.divider()
+st.subheader("🤖 Chatbot")
+chatbot_url = os.getenv("CHATBOT_URL", "http://localhost:8000")
+st.markdown(
+    f"""
+    <a href="{chatbot_url}" target="_blank" style="text-decoration:none;">
+        <span style="display:inline-block;background-color:#0d6efd;color:white;padding:10px 16px;border-radius:6px;">Open Chatbot</span>
+    </a>
+    """,
+    unsafe_allow_html=True,
+)

@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  fastapi:
+    build:
+      context: .
+      dockerfile: dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      ENV: production
+      LLM_PROVIDER: ${LLM_PROVIDER:-google}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ASTRA_DB_API_ENDPOINT: ${ASTRA_DB_API_ENDPOINT}
+      ASTRA_DB_APPLICATION_TOKEN: ${ASTRA_DB_APPLICATION_TOKEN}
+      ASTRA_DB_KEYSPACE: ${ASTRA_DB_KEYSPACE}
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    ports:
+      - "8501:8501"
+    environment:
+      CHATBOT_URL: http://fastapi:8000
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      ASTRA_DB_API_ENDPOINT: ${ASTRA_DB_API_ENDPOINT}
+      ASTRA_DB_APPLICATION_TOKEN: ${ASTRA_DB_APPLICATION_TOKEN}
+      ASTRA_DB_KEYSPACE: ${ASTRA_DB_KEYSPACE}
+    depends_on:
+      - fastapi
+
+

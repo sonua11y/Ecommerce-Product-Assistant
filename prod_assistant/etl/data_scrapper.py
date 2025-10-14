@@ -7,19 +7,27 @@ import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import InvalidSessionIdException, WebDriverException
 
 class FlipkartScraper:
     def __init__(self, output_dir="data"):
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
 
+    def _create_driver(self):
+        options = uc.ChromeOptions()
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("--start-maximized")
+        # options.add_argument("--headless=new")  # uncomment for headless deploy
+        return uc.Chrome(options=options, use_subprocess=True)
+
     def get_top_reviews(self,product_url,count=2):
         """Get the top reviews for a product.
         """
-        options = uc.ChromeOptions()
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        driver = uc.Chrome(options=options,use_subprocess=True)
+        driver = self._create_driver()
 
         if not product_url.startswith("http"):
             driver.quit()
@@ -59,44 +67,56 @@ class FlipkartScraper:
     def scrape_flipkart_products(self, query, max_products=1, review_count=2):
         """Scrape Flipkart products based on a search query.
         """
-        options = uc.ChromeOptions()
-        driver = uc.Chrome(options=options,use_subprocess=True)
-        search_url = f"https://www.flipkart.com/search?q={query.replace(' ', '+')}"
-        driver.get(search_url)
-        time.sleep(4)
-
-        try:
-            driver.find_element(By.XPATH, "//button[contains(text(), '✕')]").click()
-        except Exception as e:
-            print(f"Error occurred while closing popup: {e}")
-
-        time.sleep(2)
-        products = []
-
-        items = driver.find_elements(By.CSS_SELECTOR, "div[data-id]")[:max_products]
-        for item in items:
+        def _run_once():
+            driver = self._create_driver()
             try:
-                title = item.find_element(By.CSS_SELECTOR, "div.KzDlHZ").text.strip()
-                price = item.find_element(By.CSS_SELECTOR, "div.Nx9bqj").text.strip()
-                rating = item.find_element(By.CSS_SELECTOR, "div.XQDdHH").text.strip()
-                reviews_text = item.find_element(By.CSS_SELECTOR, "span.Wphh3N").text.strip()
-                match = re.search(r"\d+(,\d+)?(?=\s+Reviews)", reviews_text)
-                total_reviews = match.group(0) if match else "N/A"
+                search_url = f"https://www.flipkart.com/search?q={query.replace(' ', '+')}"
+                driver.get(search_url)
+                time.sleep(4)
 
-                link_el = item.find_element(By.CSS_SELECTOR, "a[href*='/p/']")
-                href = link_el.get_attribute("href")
-                product_link = href if href.startswith("http") else "https://www.flipkart.com" + href
-                match = re.findall(r"/p/(itm[0-9A-Za-z]+)", href)
-                product_id = match[0] if match else "N/A"
-            except Exception as e:
-                print(f"Error occurred while processing item: {e}")
-                continue
+                try:
+                    driver.find_element(By.XPATH, "//button[contains(text(), '✕')]").click()
+                except Exception as e:
+                    print(f"Error occurred while closing popup: {e}")
 
-            top_reviews = self.get_top_reviews(product_link, count=review_count) if "flipkart.com" in product_link else "Invalid product URL"
-            products.append([product_id, title, rating, total_reviews, price, top_reviews])
+                time.sleep(2)
+                products = []
 
-        driver.quit()
-        return products
+                items = driver.find_elements(By.CSS_SELECTOR, "div[data-id]")[:max_products]
+                for item in items:
+                    try:
+                        title = item.find_element(By.CSS_SELECTOR, "div.KzDlHZ").text.strip()
+                        price = item.find_element(By.CSS_SELECTOR, "div.Nx9bqj").text.strip()
+                        rating = item.find_element(By.CSS_SELECTOR, "div.XQDdHH").text.strip()
+                        reviews_text = item.find_element(By.CSS_SELECTOR, "span.Wphh3N").text.strip()
+                        match = re.search(r"\d+(,\d+)?(?=\s+Reviews)", reviews_text)
+                        total_reviews = match.group(0) if match else "N/A"
+
+                        link_el = item.find_element(By.CSS_SELECTOR, "a[href*='/p/']")
+                        href = link_el.get_attribute("href")
+                        product_link = href if href.startswith("http") else "https://www.flipkart.com" + href
+                        match = re.findall(r"/p/(itm[0-9A-Za-z]+)", href)
+                        product_id = match[0] if match else "N/A"
+                    except Exception as e:
+                        print(f"Error occurred while processing item: {e}")
+                        continue
+
+                    top_reviews = self.get_top_reviews(product_link, count=review_count) if "flipkart.com" in product_link else "Invalid product URL"
+                    products.append([product_id, title, rating, total_reviews, price, top_reviews])
+
+                return products
+            finally:
+                try:
+                    driver.quit()
+                except Exception:
+                    pass
+
+        # Retry once on session drop
+        try:
+            return _run_once()
+        except (InvalidSessionIdException, WebDriverException):
+            time.sleep(2)
+            return _run_once()
     
     def save_to_csv(self, data, filename="product_reviews.csv"):
         """Save the scraped product reviews to a CSV file."""
