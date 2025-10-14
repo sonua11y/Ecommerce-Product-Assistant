@@ -1,0 +1,37 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+# Virtual environment
+env/
+venv/
+
+# IDE/editor settings
+.vscode/
+.idea/
+
+# Environment files
+.env
+*.env
+
+# Logs
+*.log
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+archive/
+
+.vscode/
+
+{
+  "clientId": "WxpKBtfIynUAXUhiMzGHTPus",
+  "secret": "PU-dyxy+Q+_4X.XA4HQpZWbmovpvBWuZBWTEE+_TlhtqMMj0c5RRN8IwpvvdhUX3-HI.gDZv2LrqJSkR0x7rhzmG_GI4Yz+ERE3tWtIQDogeWT.gY_a3UCZHbxABzoDc",
+  "token": "AstraCS:WxpKBtfIynUAXUhiMzGHTPus:3bc22464a44ed95a4025fb69603f908f9896130c93fd31e6cf51ce05430dc175"
+}
