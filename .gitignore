@@ -18,6 +18,7 @@ venv/
 
 # Environment files
 .env
+.env.copy
 *.env
 
 # Logs
