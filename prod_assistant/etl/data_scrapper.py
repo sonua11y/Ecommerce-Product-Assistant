@@ -21,7 +21,15 @@ class FlipkartScraper:
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_argument("--start-maximized")
-        # options.add_argument("--headless=new")  # uncomment for headless deploy
+        # Headless for server environments
+        options.add_argument("--headless=new")
+
+        # If running on platforms like Render, provide Chrome path via env
+        chrome_path = os.getenv("CHROME_PATH") or os.getenv("GOOGLE_CHROME_BIN")
+        if chrome_path:
+            # undetected-chromedriver expects string path
+            options.binary_location = str(chrome_path)
+
         return uc.Chrome(options=options, use_subprocess=True)
 
     def get_top_reviews(self,product_url,count=2):
@@ -85,10 +93,45 @@ class FlipkartScraper:
                 items = driver.find_elements(By.CSS_SELECTOR, "div[data-id]")[:max_products]
                 for item in items:
                     try:
-                        title = item.find_element(By.CSS_SELECTOR, "div.KzDlHZ").text.strip()
-                        price = item.find_element(By.CSS_SELECTOR, "div.Nx9bqj").text.strip()
-                        rating = item.find_element(By.CSS_SELECTOR, "div.XQDdHH").text.strip()
-                        reviews_text = item.find_element(By.CSS_SELECTOR, "span.Wphh3N").text.strip()
+                        # Title selectors fallback
+                        title = ""
+                        for sel in ["div.KzDlHZ", "a.IRpwTa", "a.s1Q9rs", "div._4rR01T"]:
+                            try:
+                                title = item.find_element(By.CSS_SELECTOR, sel).text.strip()
+                                if title:
+                                    break
+                            except Exception:
+                                pass
+
+                        # Price selectors fallback
+                        price = ""
+                        for sel in ["div.Nx9bqj", "div._30jeq3", "div._25b18c > div._30jeq3"]:
+                            try:
+                                price = item.find_element(By.CSS_SELECTOR, sel).text.strip()
+                                if price:
+                                    break
+                            except Exception:
+                                pass
+
+                        # Rating selectors fallback
+                        rating = ""
+                        for sel in ["div.XQDdHH", "div._3LWZlK", "span._1lRcqv"]:
+                            try:
+                                rating = item.find_element(By.CSS_SELECTOR, sel).text.strip()
+                                if rating:
+                                    break
+                            except Exception:
+                                pass
+
+                        # Reviews count fallback
+                        reviews_text = ""
+                        for sel in ["span.Wphh3N", "span._2_R_DZ", "span._2_R_DZ > span span"]:
+                            try:
+                                reviews_text = item.find_element(By.CSS_SELECTOR, sel).text.strip()
+                                if reviews_text:
+                                    break
+                            except Exception:
+                                pass
                         match = re.search(r"\d+(,\d+)?(?=\s+Reviews)", reviews_text)
                         total_reviews = match.group(0) if match else "N/A"
 

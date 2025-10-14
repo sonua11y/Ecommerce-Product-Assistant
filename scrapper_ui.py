@@ -49,9 +49,12 @@ if st.button("🚀 Start Scraping"):
 
         final_data = list(unique_products.values())
         st.session_state["scraped_data"] = final_data  # store in session
-        flipkart_scraper.save_to_csv(final_data, output_path)
-        st.success("✅ Data saved to `data/product_reviews.csv`")
-        st.download_button("📥 Download CSV", data=open(output_path, "rb"), file_name="product_reviews.csv")
+        if final_data:
+            flipkart_scraper.save_to_csv(final_data, output_path)
+            st.success("✅ Data saved to `data/product_reviews.csv`")
+            st.download_button("📥 Download CSV", data=open(output_path, "rb"), file_name="product_reviews.csv")
+        else:
+            st.warning("No products were found. Try a different query or increase max products.")
 
 # This stays OUTSIDE "if st.button('Start Scraping')"
 if "scraped_data" in st.session_state and st.button("🧠 Store in Vector DB (AstraDB)"):
