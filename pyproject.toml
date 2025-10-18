@@ -1,3 +1,11 @@
-# This file is intentionally minimal for Streamlit Cloud deployment
-# All dependencies are in requirements.txt
+[project]
+name = "ecommerce-product-assistant"
+version = "0.1.0"
+description = "E-commerce Product Assistant with RAG"
+requires-python = ">=3.10"
+dependencies = []
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
 
