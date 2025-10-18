@@ -18,32 +18,81 @@ class FlipkartScraper:
 
     def _create_driver(self):
         """Create a Chrome driver.
-        - If CHROME_PATH or GOOGLE_CHROME_BIN is set, use system Chromium via Selenium (server-safe)
-        - Else use undetected-chromedriver for local robustness
+        - Always use system Chrome on server environments (Render, Streamlit Cloud)
+        - Use undetected-chromedriver only for local development
         """
-        chrome_path = os.getenv("CHROME_PATH") or os.getenv("GOOGLE_CHROME_BIN")
-        if chrome_path:
+        # Check if we're on a server environment
+        is_server = os.getenv("RENDER") or os.getenv("STREAMLIT_SHARING") or os.getenv("CHROME_PATH")
+        
+        if is_server:
+            # Use system Chrome for server environments
             options = ChromeOptions()
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-gpu")
             options.add_argument("--disable-dev-shm-usage")
             options.add_argument("--disable-blink-features=AutomationControlled")
             options.add_argument("--headless=new")
-            options.binary_location = str(chrome_path)
-
-            chromedriver_path = os.getenv("CHROMEDRIVER_PATH", "/usr/bin/chromedriver")
-            service = ChromeService(executable_path=chromedriver_path)
+            options.add_argument("--disable-extensions")
+            options.add_argument("--disable-plugins")
+            options.add_argument("--disable-images")
+            
+            # Try different Chrome paths
+            chrome_paths = [
+                os.getenv("CHROME_PATH"),
+                os.getenv("GOOGLE_CHROME_BIN"),
+                "/usr/bin/chromium-browser",
+                "/usr/bin/chromium",
+                "/usr/bin/google-chrome",
+                "/usr/bin/google-chrome-stable"
+            ]
+            
+            chrome_path = None
+            for path in chrome_paths:
+                if path and os.path.exists(path):
+                    chrome_path = path
+                    break
+            
+            if chrome_path:
+                options.binary_location = chrome_path
+            
+            chromedriver_paths = [
+                os.getenv("CHROMEDRIVER_PATH"),
+                "/usr/bin/chromedriver",
+                "/usr/local/bin/chromedriver"
+            ]
+            
+            chromedriver_path = None
+            for path in chromedriver_paths:
+                if path and os.path.exists(path):
+                    chromedriver_path = path
+                    break
+            
+            if chromedriver_path:
+                service = ChromeService(executable_path=chromedriver_path)
+            else:
+                service = ChromeService()  # Let Selenium find it
+            
             from selenium import webdriver
             return webdriver.Chrome(service=service, options=options)
-
-        # Local fallback to undetected-chromedriver
-        options = uc.ChromeOptions()
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        options.add_argument("--start-maximized")
-        return uc.Chrome(options=options, use_subprocess=True)
+        else:
+            # Local development - use undetected-chromedriver
+            try:
+                options = uc.ChromeOptions()
+                options.add_argument("--no-sandbox")
+                options.add_argument("--disable-gpu")
+                options.add_argument("--disable-dev-shm-usage")
+                options.add_argument("--disable-blink-features=AutomationControlled")
+                options.add_argument("--start-maximized")
+                return uc.Chrome(options=options, use_subprocess=True)
+            except Exception:
+                # Fallback to regular Selenium if UC fails
+                options = ChromeOptions()
+                options.add_argument("--no-sandbox")
+                options.add_argument("--disable-gpu")
+                options.add_argument("--disable-dev-shm-usage")
+                options.add_argument("--disable-blink-features=AutomationControlled")
+                from selenium import webdriver
+                return webdriver.Chrome(options=options)
 
     def get_top_reviews(self,product_url,count=2):
         """Get the top reviews for a product.
