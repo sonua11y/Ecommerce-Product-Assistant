@@ -1,4 +1,5 @@
 import os
+import math
 import pandas as pd
 from dotenv import load_dotenv
 from typing import List
@@ -73,13 +74,19 @@ class DataIngestion:
         product_list = []
 
         for _, row in self.product_data.iterrows():
+            # Clean NaN values and convert to strings
+            def clean_value(value):
+                if pd.isna(value) or (isinstance(value, float) and math.isnan(value)):
+                    return "N/A"
+                return str(value)
+
             product_entry = {
-                    "product_id": row["product_id"],
-                    "product_title": row["product_title"],
-                    "rating": row["rating"],
-                    "total_reviews": row["total_reviews"],
-                    "price": row["price"],
-                    "top_reviews": row["top_reviews"]
+                    "product_id": clean_value(row["product_id"]),
+                    "product_title": clean_value(row["product_title"]),
+                    "rating": clean_value(row["rating"]),
+                    "total_reviews": clean_value(row["total_reviews"]),
+                    "price": clean_value(row["price"]),
+                    "top_reviews": clean_value(row["top_reviews"])
                 }
             product_list.append(product_entry)
 
